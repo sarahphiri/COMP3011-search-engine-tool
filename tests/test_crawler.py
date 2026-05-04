@@ -86,3 +86,53 @@ def test_get_next_page_url_returns_none_when_no_next_link():
     )
 
     assert next_url is None
+
+def test_parse_quotes_returns_empty_list_for_empty_html():
+    results = parse_quotes("", "https://quotes.toscrape.com/")
+
+    assert results == []
+
+
+def test_parse_quotes_handles_missing_author_and_tags():
+    html = """
+    <html>
+        <body>
+            <div class="quote">
+                <span class="text">“A quote without author or tags.”</span>
+            </div>
+        </body>
+    </html>
+    """
+
+    results = parse_quotes(html, "https://quotes.toscrape.com/")
+
+    assert len(results) == 1
+    assert results[0]["quote"] == "“A quote without author or tags.”"
+    assert results[0]["author"] == ""
+    assert results[0]["tags"] == []
+
+
+def test_parse_quotes_handles_missing_quote_text():
+    html = """
+    <html>
+        <body>
+            <div class="quote">
+                <small class="author">Unknown Author</small>
+                <a class="tag">example</a>
+            </div>
+        </body>
+    </html>
+    """
+
+    results = parse_quotes(html, "https://quotes.toscrape.com/")
+
+    assert len(results) == 1
+    assert results[0]["quote"] == ""
+    assert results[0]["author"] == "Unknown Author"
+    assert results[0]["tags"] == ["example"]
+
+
+def test_get_next_page_url_handles_empty_html():
+    next_url = get_next_page_url("", "https://quotes.toscrape.com/")
+
+    assert next_url is None
