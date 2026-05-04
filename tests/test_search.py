@@ -106,3 +106,67 @@ def test_find_pages_returns_empty_dict_for_missing_word():
     index = {"good": {"page1": {"frequency": 1, "positions": [0]}}}
 
     assert find_pages(index, "missing") == {}
+
+def test_get_word_entry_handles_punctuation_in_word():
+    index = {
+        "good": {
+            "page1": {
+                "frequency": 1,
+                "positions": [0],
+            }
+        }
+    }
+
+    result = get_word_entry(index, "good!")
+
+    assert "page1" in result
+
+
+def test_find_pages_handles_punctuation_in_query():
+    index = {
+        "good": {
+            "page1": {"frequency": 1, "positions": [0]},
+        },
+        "friends": {
+            "page1": {"frequency": 1, "positions": [1]},
+        },
+    }
+
+    result = find_pages(index, "good, friends!")
+
+    assert "page1" in result
+
+
+def test_find_pages_handles_repeated_query_terms():
+    index = {
+        "good": {
+            "page1": {"frequency": 2, "positions": [0, 3]},
+        }
+    }
+
+    result = find_pages(index, "good good")
+
+    assert "page1" in result
+
+
+def test_find_pages_is_case_insensitive_for_multi_word_query():
+    index = {
+        "good": {
+            "page1": {"frequency": 1, "positions": [0]},
+        },
+        "friends": {
+            "page1": {"frequency": 1, "positions": [1]},
+        },
+    }
+
+    result = find_pages(index, "GOOD FRIENDS")
+
+    assert "page1" in result
+
+
+def test_load_index_raises_error_for_invalid_json(tmp_path):
+    invalid_file = tmp_path / "invalid-index.json"
+    invalid_file.write_text("{not valid json", encoding="utf-8")
+
+    with pytest.raises(Exception):
+        load_index(invalid_file)
