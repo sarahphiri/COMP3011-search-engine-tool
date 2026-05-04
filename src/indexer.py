@@ -1,19 +1,29 @@
 import re
+feature/storage-cli
 from typing import Any, Dict, List
+from typing import Dict, List, Any
+main
 
 
 def tokenise(text: str) -> List[str]:
     """
+feature/storage-cli
     Convert text into lowercase searchable tokens.
 
     This makes search case-insensitive and removes punctuation.
+    Convert text into lowercase word tokens.
+    Removes punctuation and ignores empty tokens.
+    main
     """
     return re.findall(r"\b[a-zA-Z0-9']+\b", text.lower())
 
 
+feature/storage-cli
 def build_inverted_index(
     records: List[Dict[str, Any]]
 ) -> Dict[str, Dict[str, Dict[str, Any]]]:
+def build_inverted_index(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, Dict[str, Any]]]:
+ main
     """
     Build an inverted index from crawled quote records.
 
@@ -27,10 +37,16 @@ def build_inverted_index(
         }
     }
     """
+ feature/storage-cli
     index: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
     for record in records:
         url = str(record["url"])
+    index = {}
+
+    for record in records:
+        url = record["url"]
+ main
 
         combined_text = " ".join(
             [
