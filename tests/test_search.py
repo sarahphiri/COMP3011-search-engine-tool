@@ -1,7 +1,12 @@
 import pytest
 
-from src.search import find_pages, get_word_entry, load_index, save_index
-
+from src.search import (
+    find_pages,
+    find_pages_ranked,
+    get_word_entry,
+    load_index,
+    save_index,
+)
 
 def test_save_and_load_index(tmp_path):
     index = {
@@ -170,3 +175,83 @@ def test_load_index_raises_error_for_invalid_json(tmp_path):
 
     with pytest.raises(Exception):
         load_index(invalid_file)
+
+def test_find_pages_ranked_returns_results_for_single_word():
+    index = {
+        "good": {
+            "page1": {"frequency": 1, "positions": [0]},
+            "page2": {"frequency": 3, "positions": [0, 2, 5]},
+        }
+    }
+
+    results = find_pages_ranked(index, "good")
+
+    assert len(results) == 2
+    assert results[0]["url"] == "page2"
+    assert results[0]["score"] > results[1]["score"]
+
+
+def test_find_pages_ranked_requires_all_query_terms():
+    index = {
+        "good": {
+            "page1": {"frequency": 1, "positions": [0]},
+            "page2": {"frequency": 1, "positions": [0]},
+        },
+        "friends": {
+            "page1": {"frequency": 1, "positions": [1]},
+        },
+    }
+
+    results = find_pages_ranked(index, "good friends")
+
+    assert len(results) == 1
+    assert results[0]["url"] == "page1"
+
+
+def test_find_pages_ranked_returns_empty_list_for_empty_query():
+    index = {
+        "good": {
+            "page1": {"frequency": 1, "positions": [0]},
+        }
+    }
+
+    assert find_pages_ranked(index, "") == []
+
+
+def test_find_pages_ranked_returns_empty_list_for_missing_term():
+    index = {
+        "good": {
+            "page1": {"frequency": 1, "positions": [0]},
+        }
+    }
+
+    assert find_pages_ranked(index, "missing") == []
+
+
+def test_find_pages_ranked_is_case_insensitive():
+    index = {
+        "good": {
+            "page1": {"frequency": 1, "positions": [0]},
+        }
+    }
+
+    results = find_pages_ranked(index, "GOOD")
+
+    assert len(results) == 1
+    assert results[0]["url"] == "page1"
+
+
+def test_find_pages_ranked_handles_punctuation_in_query():
+    index = {
+        "good": {
+            "page1": {"frequency": 1, "positions": [0]},
+        },
+        "friends": {
+            "page1": {"frequency": 1, "positions": [1]},
+        },
+    }
+
+    results = find_pages_ranked(index, "good, friends!")
+
+    assert len(results) == 1
+    assert results[0]["url"] == "page1"

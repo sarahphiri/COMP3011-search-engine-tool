@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 from src.crawler import crawl_site
 from src.indexer import build_inverted_index
-from src.search import find_pages, get_word_entry, load_index, save_index
+from src.search import find_pages_ranked, get_word_entry, load_index, save_index
 
 
 def print_help() -> None:
@@ -86,14 +86,18 @@ def run_shell() -> None:
                 continue
 
             query = " ".join(arguments)
-            results = find_pages(index, query)
+            results = find_pages_ranked(index, query)
 
             if not results:
                 print(f"No pages found for query: '{query}'")
             else:
-                print(f"Pages found for query: '{query}'")
-                for page_url, match_data in results.items():
-                    print(f"- {page_url}: {match_data}")
+                print(f"Ranked pages found for query: '{query}'")
+                for result in results:
+                    print(
+                        f"- {result['url']} "
+                        f"(score: {result['score']}): "
+                        f"{result['terms']}"
+                    )
 
         else:
             print(f"Unknown command: {command}")
