@@ -59,3 +59,30 @@ def test_build_index_handles_multiple_pages():
 
     assert "https://quotes.toscrape.com/page/1/" in index["good"]
     assert "https://quotes.toscrape.com/page/2/" in index["good"]
+
+def test_tokenise_handles_apostrophes():
+    assert tokenise("Don't stop believing.") == ["don't", "stop", "believing"]
+
+
+def test_tokenise_handles_numbers():
+    assert tokenise("Page 2 has 100 quotes") == ["page", "2", "has", "100", "quotes"]
+
+
+def test_tokenise_returns_empty_list_for_punctuation_only():
+    assert tokenise("!!! ... ???") == []
+
+
+def test_build_index_handles_missing_optional_fields():
+    records = [
+        {
+            "url": "https://quotes.toscrape.com/page/1/",
+        }
+    ]
+
+    index = build_inverted_index(records)
+
+    assert index == {}
+
+
+def test_build_index_handles_empty_records_list():
+    assert build_inverted_index([]) == {}
