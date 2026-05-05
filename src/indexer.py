@@ -70,3 +70,24 @@ def build_inverted_index(
         page_position_offsets[url] = start_position + len(tokens) + 1
 
     return index
+
+def test_build_index_adds_gap_between_records_on_same_page():
+    records = [
+        {
+            "url": "page1",
+            "quote": "good",
+            "author": "",
+            "tags": [],
+        },
+        {
+            "url": "page1",
+            "quote": "friends",
+            "author": "",
+            "tags": [],
+        },
+    ]
+
+    index = build_inverted_index(records)
+
+    assert index["good"]["page1"]["positions"] == [0]
+    assert index["friends"]["page1"]["positions"] == [2]
