@@ -26,8 +26,13 @@ def build_inverted_index(
             }
         }
     }
+
+    Positions are tracked at page level. A small gap is inserted between
+    records from the same page so phrase search does not accidentally match
+    across separate quotes.
     """
     index: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    page_position_offsets: Dict[str, int] = {}
 
     for record in records:
         url = str(record["url"])
@@ -42,7 +47,14 @@ def build_inverted_index(
 
         tokens = tokenise(combined_text)
 
-        for position, token in enumerate(tokens):
+        if not tokens:
+            continue
+
+        start_position = page_position_offsets.get(url, 0)
+
+        for local_position, token in enumerate(tokens):
+            position = start_position + local_position
+
             if token not in index:
                 index[token] = {}
 
@@ -55,4 +67,27 @@ def build_inverted_index(
             index[token][url]["frequency"] += 1
             index[token][url]["positions"].append(position)
 
+        page_position_offsets[url] = start_position + len(tokens) + 1
+
     return index
+
+def test_build_index_adds_gap_between_records_on_same_page():
+    records = [
+        {
+            "url": "page1",
+            "quote": "good",
+            "author": "",
+            "tags": [],
+        },
+        {
+            "url": "page1",
+            "quote": "friends",
+            "author": "",
+            "tags": [],
+        },
+    ]
+
+    index = build_inverted_index(records)
+
+    assert index["good"]["page1"]["positions"] == [0]
+    assert index["friends"]["page1"]["positions"] == [2]

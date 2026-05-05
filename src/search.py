@@ -1,4 +1,5 @@
 import json
+from difflib import get_close_matches
 from math import log
 from pathlib import Path
 from typing import Any, Dict, List, Set
@@ -157,3 +158,146 @@ def find_pages_ranked(index: Dict[str, Any], query: str) -> List[Dict[str, Any]]
         ranked_results,
         key=lambda result: (-result["score"], result["url"]),
     )
+
+def is_quoted_phrase(query: str) -> bool:
+    """
+    Return True if a query is wrapped in double quotation marks.
+    """
+    stripped_query = query.strip()
+
+    return (
+        len(stripped_query) >= 2
+        and stripped_query[0] == '"'
+        and stripped_query[-1] == '"'
+    )
+
+
+def strip_query_quotes(query: str) -> str:
+    """
+    Remove surrounding double quotation marks from a query.
+    """
+    return query.strip()[1:-1].strip()
+
+
+def _find_consecutive_phrase_positions(position_lists: List[List[int]]) -> List[int]:
+    """
+    Return starting positions where all term positions appear consecutively.
+
+    Example:
+    good positions = [3, 10]
+    friends positions = [4]
+    phrase starts at [3]
+    """
+    if not position_lists:
+        return []
+
+    if len(position_lists) == 1:
+        return position_lists[0]
+
+    following_position_sets = [
+        set(positions)
+        for positions in position_lists[1:]
+    ]
+
+    phrase_start_positions = []
+
+    for start_position in position_lists[0]:
+        phrase_matches = True
+
+        for offset, position_set in enumerate(following_position_sets, start=1):
+            if start_position + offset not in position_set:
+                phrase_matches = False
+                break
+
+        if phrase_matches:
+            phrase_start_positions.append(start_position)
+
+    return phrase_start_positions
+
+
+def phrase_search(index: Dict[str, Any], phrase: str) -> List[Dict[str, Any]]:
+    """
+    Find pages where the query terms appear consecutively.
+
+    This uses word positions stored in the inverted index.
+    """
+    phrase_terms = tokenise(phrase)
+
+    if not phrase_terms:
+        return []
+
+    matching_pages = None
+
+    for term in phrase_terms:
+        term_entry = index.get(term, {})
+
+        if not term_entry:
+            return []
+
+        pages_for_term = set(term_entry.keys())
+
+        if matching_pages is None:
+            matching_pages = pages_for_term
+        else:
+            matching_pages = matching_pages.intersection(pages_for_term)
+
+    if not matching_pages:
+        return []
+
+    results = []
+
+    for page_url in matching_pages:
+        position_lists = [
+            index[term][page_url]["positions"]
+            for term in phrase_terms
+        ]
+
+        phrase_positions = _find_consecutive_phrase_positions(position_lists)
+
+        if phrase_positions:
+            results.append(
+                {
+                    "url": page_url,
+                    "phrase": " ".join(phrase_terms),
+                    "phrase_positions": phrase_positions,
+                    "match_count": len(phrase_positions),
+                }
+            )
+
+    return sorted(
+        results,
+        key=lambda result: (-result["match_count"], result["url"]),
+    )
+
+
+def suggest_terms(
+    index: Dict[str, Any],
+    query: str,
+    max_suggestions: int = 3,
+    cutoff: float = 0.7,
+) -> Dict[str, List[str]]:
+    """
+    Suggest close indexed terms for query terms that are not in the index.
+
+    This is useful when the user misspells a word or searches for a term
+    that does not exist in the current index.
+    """
+    query_terms = list(dict.fromkeys(tokenise(query)))
+    vocabulary = list(index.keys())
+    suggestions = {}
+
+    for term in query_terms:
+        if term in index:
+            continue
+
+        close_matches = get_close_matches(
+            term,
+            vocabulary,
+            n=max_suggestions,
+            cutoff=cutoff,
+        )
+
+        if close_matches:
+            suggestions[term] = close_matches
+
+    return suggestions

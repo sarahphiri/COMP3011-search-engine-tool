@@ -2,7 +2,16 @@ from typing import Any, Dict
 
 from src.crawler import crawl_site
 from src.indexer import build_inverted_index
-from src.search import find_pages_ranked, get_word_entry, load_index, save_index
+from src.search import (
+    find_pages_ranked,
+    get_word_entry,
+    is_quoted_phrase,
+    load_index,
+    phrase_search,
+    save_index,
+    strip_query_quotes,
+    suggest_terms,
+)
 
 
 def print_help() -> None:
@@ -13,9 +22,24 @@ def print_help() -> None:
     print("  build              Crawl website, build index, and save it")
     print("  load               Load saved index from file")
     print("  print <word>       Print inverted index entry for a word")
-    print("  find <query>       Find pages containing query terms")
+    print("  find <query>       Find pages containing query terms with TF-IDF ranking")
+    print('  find "<phrase>"    Find exact phrase matches using word positions')
+    print("  phrase <query>     Find exact phrase matches using word positions")
+    print("  suggest <query>    Suggest close indexed terms for a query")
     print("  help               Show this help message")
     print("  exit               Exit the program\n")
+
+
+def print_suggestions(index: Dict[str, Any], query: str) -> None:
+    """
+    Print query suggestions for missing or misspelled terms.
+    """
+    suggestions = suggest_terms(index, query)
+
+    if suggestions:
+        print("Suggestions:")
+        for missing_term, matches in suggestions.items():
+            print(f"- {missing_term}: {', '.join(matches)}")
 
 
 def run_shell() -> None:
@@ -42,7 +66,7 @@ def run_shell() -> None:
             print("Goodbye.")
             break
 
-        if command == "help":
+        elif command == "help":
             print_help()
 
         elif command == "build":
@@ -73,6 +97,7 @@ def run_shell() -> None:
 
             if not entry:
                 print(f"No index entry found for '{word}'.")
+                print_suggestions(index, word)
             else:
                 print(entry)
 
@@ -86,18 +111,80 @@ def run_shell() -> None:
                 continue
 
             query = " ".join(arguments)
-            results = find_pages_ranked(index, query)
+
+            if is_quoted_phrase(query):
+                phrase = strip_query_quotes(query)
+                results = phrase_search(index, phrase)
+
+                if not results:
+                    print(f"No exact phrase matches found for: '{phrase}'")
+                    print_suggestions(index, phrase)
+                else:
+                    print(f"Exact phrase matches for: '{phrase}'")
+                    for result in results:
+                        print(
+                            f"- {result['url']} "
+                            f"(matches: {result['match_count']}, "
+                            f"positions: {result['phrase_positions']})"
+                        )
+
+            else:
+                results = find_pages_ranked(index, query)
+
+                if not results:
+                    print(f"No pages found for query: '{query}'")
+                    print_suggestions(index, query)
+                else:
+                    print(f"Ranked pages found for query: '{query}'")
+                    for result in results:
+                        print(
+                            f"- {result['url']} "
+                            f"(score: {result['score']}): "
+                            f"{result['terms']}"
+                        )
+
+        elif command == "phrase":
+            if not arguments:
+                print("Please provide a phrase, e.g. phrase good friends")
+                continue
+
+            if not index:
+                print("No index loaded. Run build or load first.")
+                continue
+
+            phrase = " ".join(arguments)
+            results = phrase_search(index, phrase)
 
             if not results:
-                print(f"No pages found for query: '{query}'")
+                print(f"No exact phrase matches found for: '{phrase}'")
+                print_suggestions(index, phrase)
             else:
-                print(f"Ranked pages found for query: '{query}'")
+                print(f"Exact phrase matches for: '{phrase}'")
                 for result in results:
                     print(
                         f"- {result['url']} "
-                        f"(score: {result['score']}): "
-                        f"{result['terms']}"
+                        f"(matches: {result['match_count']}, "
+                        f"positions: {result['phrase_positions']})"
                     )
+
+        elif command == "suggest":
+            if not arguments:
+                print("Please provide a query, e.g. suggest frend")
+                continue
+
+            if not index:
+                print("No index loaded. Run build or load first.")
+                continue
+
+            query = " ".join(arguments)
+            suggestions = suggest_terms(index, query)
+
+            if not suggestions:
+                print(f"No suggestions found for: '{query}'")
+            else:
+                print(f"Suggestions for: '{query}'")
+                for missing_term, matches in suggestions.items():
+                    print(f"- {missing_term}: {', '.join(matches)}")
 
         else:
             print(f"Unknown command: {command}")
