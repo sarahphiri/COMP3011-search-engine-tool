@@ -101,6 +101,7 @@ def find_pages_ranked(index: Dict[str, Any], query: str) -> List[Dict[str, Any]]
     while reducing the influence of terms that appear on many pages.
     """
     query_terms = list(dict.fromkeys(tokenise(query)))
+    query_terms = order_terms_by_document_frequency(index, query_terms)
 
     if not query_terms:
         return []
@@ -220,15 +221,22 @@ def phrase_search(index: Dict[str, Any], phrase: str) -> List[Dict[str, Any]]:
     Find pages where the query terms appear consecutively.
 
     This uses word positions stored in the inverted index.
+
+    The function uses document-frequency ordering only to reduce the candidate
+    page set efficiently. It keeps the original phrase term order when checking
+    positions, because phrase matching depends on word order.
     """
     phrase_terms = tokenise(phrase)
 
     if not phrase_terms:
         return []
 
+    # Use rarest terms first only for filtering candidate pages.
+    filter_terms = order_terms_by_document_frequency(index, phrase_terms)
+
     matching_pages = None
 
-    for term in phrase_terms:
+    for term in filter_terms:
         term_entry = index.get(term, {})
 
         if not term_entry:
@@ -247,6 +255,8 @@ def phrase_search(index: Dict[str, Any], phrase: str) -> List[Dict[str, Any]]:
     results = []
 
     for page_url in matching_pages:
+        # Important: use the original phrase_terms order here.
+        # This is what checks whether the phrase appears in the correct order.
         position_lists = [
             index[term][page_url]["positions"]
             for term in phrase_terms
@@ -301,3 +311,12 @@ def suggest_terms(
             suggestions[term] = close_matches
 
     return suggestions
+
+def order_terms_by_document_frequency(index: Dict[str, Any], terms: List[str]) -> List[str]:
+    """
+    Order query terms from rarest to most common based on document frequency.
+
+    This improves multi-word search because intersections start with the
+    smallest posting lists first.
+    """
+    return sorted(terms, key=lambda term: len(index.get(term, {})))
