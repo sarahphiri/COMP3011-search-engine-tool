@@ -10,6 +10,7 @@ from src.search import (
     save_index,
     strip_query_quotes,
     suggest_terms,
+    order_terms_by_document_frequency
 )
 
 def test_save_and_load_index(tmp_path):
@@ -381,3 +382,19 @@ def test_is_quoted_phrase_returns_false_for_unquoted_query():
 
 def test_strip_query_quotes_removes_surrounding_quotes():
     assert strip_query_quotes('"good friends"') == "good friends"
+
+def test_order_terms_by_document_frequency_orders_rarest_terms_first():
+    index = {
+        "common": {
+            "page1": {"frequency": 1, "positions": [0]},
+            "page2": {"frequency": 1, "positions": [0]},
+            "page3": {"frequency": 1, "positions": [0]},
+        },
+        "rare": {
+            "page1": {"frequency": 1, "positions": [1]},
+        },
+    }
+
+    ordered_terms = order_terms_by_document_frequency(index, ["common", "rare"])
+
+    assert ordered_terms == ["rare", "common"]
