@@ -1,2 +1,308 @@
-# COMP3011-search-engine-tool
-Python search engine tool for crawling, indexing, and searching quotes.toscrape.com.
+# COMP3011 Search Engine Tool
+
+A Python command-line search engine that crawls `quotes.toscrape.com`, builds an inverted index, saves and loads the index, and allows users to search for single-word and multi-word queries.
+
+## Features
+
+- Crawls quote pages from `quotes.toscrape.com`
+- Respects a six-second politeness delay between website requests
+- Extracts quote text, authors, tags, and page URLs
+- Builds an inverted index with word frequency and position statistics
+- Saves and loads the index from the file system
+- Provides a command-line interface with `build`, `load`, `print`, and `find`
+- Supports case-insensitive search
+- Handles single-word and multi-word queries
+- Uses TF-IDF ranking to order search results by relevance
+- Includes tests for the crawler, indexer, storage, search logic, and edge cases
+
+## Project Structure
+
+```text
+COMP3011-search-engine-tool/
+├── src/
+│   ├── __init__.py
+│   ├── crawler.py
+│   ├── indexer.py
+│   ├── search.py
+│   └── main.py
+├── tests/
+│   ├── test_crawler.py
+│   ├── test_indexer.py
+│   └── test_search.py
+├── data/
+│   └── index.json
+├── requirements.txt
+├── pytest.ini
+├── GENAI_REFLECTION.md
+└── README.md
+```
+
+## Installation
+
+Clone the repository:
+
+```bash
+git clone <your-repository-url>
+cd COMP3011-search-engine-tool
+```
+
+Install the required dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+
+Run the command-line tool:
+
+```bash
+python -m src.main
+```
+
+The program opens an interactive shell where the following commands can be used.
+
+### `build`
+
+Crawls the target website, builds the inverted index, and saves it to `data/index.json`.
+
+```text
+> build
+```
+
+### `load`
+
+Loads a previously saved index from the file system.
+
+```text
+> load
+```
+
+### `print <word>`
+
+Prints the inverted index entry for a single word.
+
+Example:
+
+```text
+> print life
+```
+
+This shows the pages where the word appears, along with stored statistics such as frequency and positions.
+
+### `find <query>`
+
+Finds pages containing the query terms.
+
+Examples:
+
+```text
+> find life
+> find good friends
+```
+
+The `find` command supports both single-word and multi-word queries. Results are ranked using TF-IDF scoring so that more relevant pages appear first.
+
+### `help`
+
+Displays the available commands.
+
+```text
+> help
+```
+
+### `exit`
+
+Closes the command-line tool.
+
+```text
+> exit
+```
+
+## Testing
+
+Run the full test suite:
+
+```bash
+python -m pytest
+```
+
+Run the tests with coverage:
+
+```bash
+python -m pytest --cov=src tests/
+```
+
+The test suite covers:
+
+- crawler parsing
+- pagination detection
+- empty HTML handling
+- missing quote fields
+- text tokenisation
+- punctuation and capitalisation handling
+- inverted index construction
+- word frequency tracking
+- word position tracking
+- save and load behaviour
+- missing index files
+- invalid JSON files
+- single-word search
+- multi-word search
+- empty queries
+- missing search terms
+- TF-IDF ranked search results
+
+## Design Decisions
+
+### Crawler
+
+The crawler is split into separate functions for fetching pages, parsing quote data, detecting the next page, and controlling the full crawl.
+
+This separation makes the crawler easier to test because each part can be checked independently. It also makes the code easier to explain during the video demonstration.
+
+The crawler includes the required six-second politeness delay between successive requests to the website.
+
+### Text Extraction
+
+The crawler extracts structured records from each page, including:
+
+- quote text
+- author
+- tags
+- page URL
+
+This means the indexer works with clean structured data rather than raw HTML.
+
+### Text Normalisation
+
+All indexed and searched text is lowercased and tokenised before processing.
+
+This ensures that searches are case-insensitive. For example:
+
+```text
+Good
+good
+GOOD
+```
+
+are all treated as the same word.
+
+Punctuation is also removed during tokenisation so that words such as:
+
+```text
+friends.
+friends!
+friends,
+```
+
+are treated as:
+
+```text
+friends
+```
+
+### Inverted Index
+
+The inverted index uses a nested dictionary structure:
+
+```text
+word → page URL → frequency and positions
+```
+
+Example structure:
+
+```json
+{
+  "good": {
+    "https://quotes.toscrape.com/page/1/": {
+      "frequency": 2,
+      "positions": [0, 3]
+    }
+  }
+}
+```
+
+This structure supports fast lookup for the `print` command and makes multi-word search easier because the program can compare the sets of pages associated with each query term.
+
+Frequency is stored so the tool can identify how often a word appears on a page. Positions are stored to provide a more detailed index and to support possible future features such as phrase search.
+
+### Storage
+
+The index is saved as a JSON file in the `data/` folder.
+
+JSON was chosen because it is readable, portable, and easy to inspect. This makes it clear what data has been generated by the `build` command and allows the index to be loaded again without re-crawling the website.
+
+### Search
+
+The search logic is separated from the command-line interface so it can be tested independently.
+
+Single-word queries return pages containing that word. Multi-word queries use the intersection of page sets, meaning returned pages must contain all query terms.
+
+For example:
+
+```text
+find good friends
+```
+
+returns pages that contain both `good` and `friends`.
+
+### TF-IDF Ranking
+
+TF-IDF ranking was added as an advanced search feature.
+
+The ranking considers:
+
+- how often a query term appears on a page
+- how common or rare the term is across all indexed pages
+
+This makes the search results more useful than simply returning matching pages in an unordered list. Pages where the query terms appear more strongly are ranked higher.
+
+## Error Handling
+
+The tool includes handling for common user and file errors, including:
+
+- empty commands
+- missing arguments after `print`
+- missing arguments after `find`
+- unknown commands
+- searching before an index has been loaded
+- loading a missing index file
+- invalid or empty search terms
+
+This helps the command-line tool behave more reliably during demonstration and use.
+
+## GenAI Use
+
+Generative AI was used as a support tool during development. It helped with planning the project structure, understanding possible inverted index designs, debugging errors, and suggesting test cases.
+
+However, AI-generated suggestions were reviewed, tested, and adapted rather than copied without checking. Some suggestions needed to be changed to match the coursework requirements, the required command-line interface, and the actual structure of `quotes.toscrape.com`.
+
+For example, some initial search suggestions returned pages containing any query term, but the implementation was adapted so multi-word queries return pages containing all query terms. Additional tests were also added manually for edge cases such as punctuation, empty queries, missing fields, and invalid files.
+
+Using GenAI helped speed up parts of the development process, but it also highlighted the need to understand, test, and justify all submitted code.
+
+More detailed notes are included in `GENAI_REFLECTION.md`.
+
+## Limitations
+
+- The crawler is designed specifically for `quotes.toscrape.com`.
+- The index only updates when the `build` command is run again.
+- The current search does not include stemming, synonym expansion, or spelling correction.
+- TF-IDF ranking is based only on the pages and terms stored in the local index.
+
+## Coursework Requirements Covered
+
+This project covers the main coursework requirements:
+
+- crawling the target website
+- creating an inverted index
+- storing word statistics such as frequency and positions
+- supporting case-insensitive search
+- saving and loading the index
+- implementing the required `build`, `load`, `print`, and `find` commands
+- supporting multi-word queries
+- handling edge cases and invalid input
+- using tests to check crawler, indexer, storage, and search behaviour
+- using GitHub for version control, issues, branches, pull requests, and milestones
+- reflecting on GenAI use during development
