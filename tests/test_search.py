@@ -4,8 +4,12 @@ from src.search import (
     find_pages,
     find_pages_ranked,
     get_word_entry,
+    is_quoted_phrase,
     load_index,
+    phrase_search,
     save_index,
+    strip_query_quotes,
+    suggest_terms,
 )
 
 def test_save_and_load_index(tmp_path):
@@ -255,3 +259,125 @@ def test_find_pages_ranked_handles_punctuation_in_query():
 
     assert len(results) == 1
     assert results[0]["url"] == "page1"
+
+def test_phrase_search_returns_page_when_terms_are_consecutive():
+    index = {
+        "good": {
+            "page1": {"frequency": 1, "positions": [0]},
+        },
+        "friends": {
+            "page1": {"frequency": 1, "positions": [1]},
+        },
+    }
+
+    results = phrase_search(index, "good friends")
+
+    assert len(results) == 1
+    assert results[0]["url"] == "page1"
+    assert results[0]["phrase_positions"] == [0]
+
+
+def test_phrase_search_does_not_return_page_when_terms_are_not_consecutive():
+    index = {
+        "good": {
+            "page1": {"frequency": 1, "positions": [0]},
+        },
+        "friends": {
+            "page1": {"frequency": 1, "positions": [3]},
+        },
+    }
+
+    results = phrase_search(index, "good friends")
+
+    assert results == []
+
+
+def test_phrase_search_requires_all_terms_to_exist():
+    index = {
+        "good": {
+            "page1": {"frequency": 1, "positions": [0]},
+        }
+    }
+
+    results = phrase_search(index, "good friends")
+
+    assert results == []
+
+
+def test_phrase_search_is_case_insensitive():
+    index = {
+        "good": {
+            "page1": {"frequency": 1, "positions": [0]},
+        },
+        "friends": {
+            "page1": {"frequency": 1, "positions": [1]},
+        },
+    }
+
+    results = phrase_search(index, "GOOD FRIENDS")
+
+    assert len(results) == 1
+    assert results[0]["url"] == "page1"
+
+
+def test_phrase_search_handles_punctuation():
+    index = {
+        "good": {
+            "page1": {"frequency": 1, "positions": [0]},
+        },
+        "friends": {
+            "page1": {"frequency": 1, "positions": [1]},
+        },
+    }
+
+    results = phrase_search(index, "good, friends!")
+
+    assert len(results) == 1
+    assert results[0]["url"] == "page1"
+
+
+def test_suggest_terms_returns_close_match_for_missing_word():
+    index = {
+        "friend": {},
+        "life": {},
+        "truth": {},
+    }
+
+    suggestions = suggest_terms(index, "frend")
+
+    assert "frend" in suggestions
+    assert "friend" in suggestions["frend"]
+
+
+def test_suggest_terms_ignores_existing_words():
+    index = {
+        "friend": {},
+        "life": {},
+    }
+
+    suggestions = suggest_terms(index, "friend")
+
+    assert suggestions == {}
+
+
+def test_suggest_terms_returns_empty_dict_when_no_close_match():
+    index = {
+        "friend": {},
+        "life": {},
+    }
+
+    suggestions = suggest_terms(index, "xyzabc")
+
+    assert suggestions == {}
+
+
+def test_is_quoted_phrase_returns_true_for_quoted_query():
+    assert is_quoted_phrase('"good friends"') is True
+
+
+def test_is_quoted_phrase_returns_false_for_unquoted_query():
+    assert is_quoted_phrase("good friends") is False
+
+
+def test_strip_query_quotes_removes_surrounding_quotes():
+    assert strip_query_quotes('"good friends"') == "good friends"
