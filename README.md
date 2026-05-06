@@ -306,3 +306,89 @@ This project covers the main coursework requirements:
 - using tests to check crawler, indexer, storage, and search behaviour
 - using GitHub for version control, issues, branches, pull requests, and milestones
 - reflecting on GenAI use during development
+
+## Performance, Complexity, and Benchmarking
+
+This project includes additional performance evidence to support the implementation and demonstrate awareness of algorithmic efficiency.
+
+The complexity analysis is documented in:
+
+```text
+docs/COMPLEXITY_AND_BENCHMARKING.md
+```
+
+The benchmark script is located at:
+
+```text
+scripts/benchmark.py
+```
+
+Run the benchmark script with:
+
+```bash
+python scripts/benchmark.py
+```
+
+The benchmark results are written to:
+
+```text
+docs/BENCHMARK_RESULTS.md
+```
+
+## Benchmarking Approach
+
+The benchmark script measures the performance of the main indexing and search operations:
+
+- index construction
+- TF-IDF ranked search
+- phrase search
+- query suggestions
+
+The benchmark uses synthetic records rather than live crawling. This makes the results repeatable and avoids benchmark times being affected by network speed, website response time, or the required six-second politeness delay between crawler requests.
+
+## Algorithmic Efficiency
+
+The project uses an inverted index rather than scanning every page for every query.
+
+The index structure is:
+
+```text
+word → page URL → frequency and positions
+```
+
+This allows the tool to directly retrieve the pages associated with a query term.
+
+For multi-word queries, the search implementation processes rarer terms first by ordering terms according to document frequency. This reduces the candidate page set earlier and makes query processing more efficient in practice.
+
+TF-IDF ranking and phrase search are then applied only to candidate pages rather than every indexed page.
+
+## Summary of Complexity
+
+| Operation | Expected Complexity | Explanation |
+|---|---:|---|
+| Index construction | `O(T)` | Each token is processed once |
+| `print <word>` lookup | `O(1)` average lookup | Uses direct dictionary access |
+| Multi-word search | `O(sum(df(t)))` | Intersects posting lists for query terms |
+| TF-IDF ranking | `O(Q × K)` | Scores candidate pages only |
+| Phrase search | `O(sum(df(t)) + K × position checks)` | Uses stored word positions |
+| Query suggestions | `O(V)` | Compares missing terms against indexed vocabulary |
+
+Where:
+
+- `T` is the total number of tokens indexed
+- `df(t)` is the number of pages containing term `t`
+- `Q` is the number of query terms
+- `K` is the number of candidate pages after filtering
+- `V` is the number of unique terms in the vocabulary
+
+## Performance Design Decisions
+
+The main performance-focused decisions were:
+
+- using an inverted index instead of scanning raw page text for every query
+- storing word frequencies to support TF-IDF ranking
+- storing word positions to support exact phrase search
+- ordering multi-word query terms by document frequency before intersecting page sets
+- benchmarking indexing and search operations using repeatable synthetic data
+
+These choices help demonstrate that the tool is not only functional, but also designed with search efficiency and scalability in mind.
