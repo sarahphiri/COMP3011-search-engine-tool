@@ -42,13 +42,23 @@ def test_cli_load_successfully_loads_index(monkeypatch, capsys):
         }
     }
 
+    records = [
+        {
+            "url": "page1",
+            "quote": "Life is good.",
+            "author": "Author One",
+            "tags": ["life"],
+        }
+    ]
+
     monkeypatch.setattr("src.main.load_index", lambda: index)
+    monkeypatch.setattr("src.main.load_records", lambda: records)
 
     run_shell()
 
     output = capsys.readouterr().out
 
-    assert "Index loaded. Loaded 1 unique words." in output
+    assert "Index loaded. Loaded 1 unique words and 1 quote records." in output
     assert "Goodbye." in output
 
 
