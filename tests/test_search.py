@@ -3,19 +3,14 @@ import pytest
 from src.main import run_shell
 
 from src.search import (
-    discover_quotes,
     find_pages,
     find_pages_ranked,
     get_word_entry,
     is_quoted_phrase,
     load_index,
-    load_records,
-    lucky_quote,
     order_terms_by_document_frequency,
     phrase_search,
     save_index,
-    save_records,
-    score_quote_record,
     strip_query_quotes,
     suggest_terms,
 )
@@ -406,176 +401,6 @@ def test_order_terms_by_document_frequency_orders_rarest_terms_first():
 
     assert ordered_terms == ["rare", "common"]
 
-def test_save_and_load_records(tmp_path):
-    records = [
-        {
-            "url": "page1",
-            "quote": "Life is good.",
-            "author": "Author One",
-            "tags": ["life"],
-        }
-    ]
-
-    file_path = tmp_path / "records.json"
-
-    save_records(records, file_path)
-    loaded_records = load_records(file_path)
-
-    assert loaded_records == records
-
-
-def test_load_records_raises_error_when_file_missing(tmp_path):
-    missing_file = tmp_path / "missing-records.json"
-
-    with pytest.raises(FileNotFoundError):
-        load_records(missing_file)
-
-
-def test_score_quote_record_rewards_quote_text_match():
-    record = {
-        "url": "page1",
-        "quote": "Life is what happens when you are busy making other plans.",
-        "author": "Allen Saunders",
-        "tags": ["life", "planning"],
-    }
-
-    result = score_quote_record(record, "life")
-
-    assert result["score"] > 0
-    assert any("quote text" in reason for reason in result["reasons"])
-
-
-def test_score_quote_record_rewards_tag_match():
-    record = {
-        "url": "page1",
-        "quote": "A quote about planning.",
-        "author": "Example Author",
-        "tags": ["life"],
-    }
-
-    result = score_quote_record(record, "life")
-
-    assert result["score"] >= 4
-    assert any("tag" in reason for reason in result["reasons"])
-
-
-def test_score_quote_record_rewards_exact_phrase_match():
-    record = {
-        "url": "page1",
-        "quote": "Good friends, good books, and a sleepy conscience.",
-        "author": "Mark Twain",
-        "tags": ["friends", "books"],
-    }
-
-    result = score_quote_record(record, "good friends")
-
-    assert result["score"] >= 5
-    assert any("Exact phrase" in reason for reason in result["reasons"])
-
-
-def test_discover_quotes_returns_top_results_in_score_order():
-    records = [
-        {
-            "url": "page1",
-            "quote": "Life is good.",
-            "author": "Author One",
-            "tags": [],
-        },
-        {
-            "url": "page2",
-            "quote": "Life life life.",
-            "author": "Author Two",
-            "tags": [],
-        },
-    ]
-
-    results = discover_quotes(records, "life", limit=2)
-
-    assert len(results) == 2
-    assert results[0]["record"]["url"] == "page2"
-
-
-def test_discover_quotes_respects_limit():
-    records = [
-        {
-            "url": "page1",
-            "quote": "Life is good.",
-            "author": "Author One",
-            "tags": [],
-        },
-        {
-            "url": "page2",
-            "quote": "Life is interesting.",
-            "author": "Author Two",
-            "tags": [],
-        },
-    ]
-
-    results = discover_quotes(records, "life", limit=1)
-
-    assert len(results) == 1
-
-
-def test_discover_quotes_returns_empty_list_for_missing_query():
-    records = [
-        {
-            "url": "page1",
-            "quote": "Life is good.",
-            "author": "Author One",
-            "tags": [],
-        }
-    ]
-
-    assert discover_quotes(records, "xyzabc") == []
-
-
-def test_discover_quotes_returns_empty_list_for_empty_query():
-    records = [
-        {
-            "url": "page1",
-            "quote": "Life is good.",
-            "author": "Author One",
-            "tags": [],
-        }
-    ]
-
-    assert discover_quotes(records, "") == []
-
-
-def test_lucky_quote_returns_best_single_result():
-    records = [
-        {
-            "url": "page1",
-            "quote": "Life is good.",
-            "author": "Author One",
-            "tags": [],
-        },
-        {
-            "url": "page2",
-            "quote": "Life life life.",
-            "author": "Author Two",
-            "tags": [],
-        },
-    ]
-
-    result = lucky_quote(records, "life")
-
-    assert result is not None
-    assert result["record"]["url"] == "page2"
-
-
-def test_lucky_quote_returns_none_when_no_result():
-    records = [
-        {
-            "url": "page1",
-            "quote": "Life is good.",
-            "author": "Author One",
-            "tags": [],
-        }
-    ]
-
-    assert lucky_quote(records, "xyzabc") is None
-
 def run_cli_with_inputs(monkeypatch, commands):
     """
     Run the CLI with mocked user input.
@@ -591,18 +416,6 @@ def sample_cli_index():
         }
     }
 
-
-def sample_cli_records():
-    return [
-        {
-            "url": "page1",
-            "quote": "Life is good.",
-            "author": "Author One",
-            "tags": ["life"],
-        }
-    ]
-
-
 def test_cli_build_find_and_exit_with_mocked_input(monkeypatch, capsys):
     run_cli_with_inputs(monkeypatch, ["build", "find life", "exit"])
 
@@ -617,7 +430,6 @@ def test_cli_build_find_and_exit_with_mocked_input(monkeypatch, capsys):
 
     monkeypatch.setattr("src.main.crawl_site", lambda: records)
     monkeypatch.setattr("src.main.save_index", lambda index: None)
-    monkeypatch.setattr("src.main.save_records", lambda records: None)
 
     run_shell()
 
@@ -632,13 +444,12 @@ def test_cli_load_successfully_loads_index(monkeypatch, capsys):
     run_cli_with_inputs(monkeypatch, ["load", "exit"])
 
     monkeypatch.setattr("src.main.load_index", sample_cli_index)
-    monkeypatch.setattr("src.main.load_records", sample_cli_records)
 
     run_shell()
 
     output = capsys.readouterr().out
 
-    assert "Index loaded. Loaded 1 unique words and 1 quote records." in output
+    assert "Index loaded. Loaded 1 unique words." in output
     assert "Goodbye." in output
 
 
@@ -696,7 +507,6 @@ def test_cli_print_requires_argument(monkeypatch, capsys):
     run_cli_with_inputs(monkeypatch, ["load", "print", "exit"])
 
     monkeypatch.setattr("src.main.load_index", sample_cli_index)
-    monkeypatch.setattr("src.main.load_records", sample_cli_records)
 
     run_shell()
 
@@ -719,7 +529,6 @@ def test_cli_print_existing_word(monkeypatch, capsys):
     run_cli_with_inputs(monkeypatch, ["load", "print life", "exit"])
 
     monkeypatch.setattr("src.main.load_index", sample_cli_index)
-    monkeypatch.setattr("src.main.load_records", sample_cli_records)
 
     run_shell()
 
@@ -733,7 +542,6 @@ def test_cli_print_missing_word(monkeypatch, capsys):
     run_cli_with_inputs(monkeypatch, ["load", "print missing", "exit"])
 
     monkeypatch.setattr("src.main.load_index", sample_cli_index)
-    monkeypatch.setattr("src.main.load_records", sample_cli_records)
 
     run_shell()
 
@@ -746,7 +554,6 @@ def test_cli_find_requires_argument(monkeypatch, capsys):
     run_cli_with_inputs(monkeypatch, ["load", "find", "exit"])
 
     monkeypatch.setattr("src.main.load_index", sample_cli_index)
-    monkeypatch.setattr("src.main.load_records", sample_cli_records)
 
     run_shell()
 
@@ -776,7 +583,6 @@ def test_cli_find_ranked_results(monkeypatch, capsys):
     }
 
     monkeypatch.setattr("src.main.load_index", lambda: index)
-    monkeypatch.setattr("src.main.load_records", sample_cli_records)
 
     run_shell()
 
@@ -799,7 +605,6 @@ def test_cli_find_missing_query_shows_suggestions(monkeypatch, capsys):
     }
 
     monkeypatch.setattr("src.main.load_index", lambda: index)
-    monkeypatch.setattr("src.main.load_records", sample_cli_records)
 
     run_shell()
 
@@ -823,7 +628,6 @@ def test_cli_find_quoted_phrase(monkeypatch, capsys):
     }
 
     monkeypatch.setattr("src.main.load_index", lambda: index)
-    monkeypatch.setattr("src.main.load_records", sample_cli_records)
 
     run_shell()
 
@@ -846,7 +650,6 @@ def test_cli_find_quoted_phrase_no_results(monkeypatch, capsys):
     }
 
     monkeypatch.setattr("src.main.load_index", lambda: index)
-    monkeypatch.setattr("src.main.load_records", sample_cli_records)
 
     run_shell()
 
@@ -859,7 +662,6 @@ def test_cli_phrase_requires_argument(monkeypatch, capsys):
     run_cli_with_inputs(monkeypatch, ["load", "phrase", "exit"])
 
     monkeypatch.setattr("src.main.load_index", sample_cli_index)
-    monkeypatch.setattr("src.main.load_records", sample_cli_records)
 
     run_shell()
 
@@ -891,7 +693,6 @@ def test_cli_phrase_returns_exact_match(monkeypatch, capsys):
     }
 
     monkeypatch.setattr("src.main.load_index", lambda: index)
-    monkeypatch.setattr("src.main.load_records", sample_cli_records)
 
     run_shell()
 
@@ -914,7 +715,6 @@ def test_cli_phrase_no_results(monkeypatch, capsys):
     }
 
     monkeypatch.setattr("src.main.load_index", lambda: index)
-    monkeypatch.setattr("src.main.load_records", sample_cli_records)
 
     run_shell()
 
@@ -927,7 +727,6 @@ def test_cli_suggest_requires_argument(monkeypatch, capsys):
     run_cli_with_inputs(monkeypatch, ["load", "suggest", "exit"])
 
     monkeypatch.setattr("src.main.load_index", sample_cli_index)
-    monkeypatch.setattr("src.main.load_records", sample_cli_records)
 
     run_shell()
 
@@ -959,7 +758,6 @@ def test_cli_suggest_returns_suggestions(monkeypatch, capsys):
     }
 
     monkeypatch.setattr("src.main.load_index", lambda: index)
-    monkeypatch.setattr("src.main.load_records", sample_cli_records)
 
     run_shell()
 
@@ -982,112 +780,9 @@ def test_cli_suggest_no_suggestions(monkeypatch, capsys):
     }
 
     monkeypatch.setattr("src.main.load_index", lambda: index)
-    monkeypatch.setattr("src.main.load_records", sample_cli_records)
 
     run_shell()
 
     output = capsys.readouterr().out
 
     assert "No suggestions found for: 'xyzabc'" in output
-
-
-def test_cli_lucky_returns_best_quote(monkeypatch, capsys):
-    run_cli_with_inputs(monkeypatch, ["build", "lucky life", "exit"])
-
-    records = [
-        {
-            "url": "page1",
-            "quote": "Life is good.",
-            "author": "Author One",
-            "tags": ["life"],
-        }
-    ]
-
-    monkeypatch.setattr("src.main.crawl_site", lambda: records)
-    monkeypatch.setattr("src.main.save_index", lambda index: None)
-    monkeypatch.setattr("src.main.save_records", lambda records: None)
-
-    run_shell()
-
-    output = capsys.readouterr().out
-
-    assert "I'm Feeling Lucky result for: 'life'" in output
-    assert "Life is good." in output
-    assert "Discovery score" in output
-
-
-def test_cli_discover_returns_quote_recommendations(monkeypatch, capsys):
-    run_cli_with_inputs(monkeypatch, ["build", "discover life", "exit"])
-
-    records = [
-        {
-            "url": "page1",
-            "quote": "Life is good.",
-            "author": "Author One",
-            "tags": ["life"],
-        },
-        {
-            "url": "page2",
-            "quote": "Life is interesting.",
-            "author": "Author Two",
-            "tags": [],
-        },
-    ]
-
-    monkeypatch.setattr("src.main.crawl_site", lambda: records)
-    monkeypatch.setattr("src.main.save_index", lambda index: None)
-    monkeypatch.setattr("src.main.save_records", lambda records: None)
-
-    run_shell()
-
-    output = capsys.readouterr().out
-
-    assert "Quote discovery results for: 'life'" in output
-    assert "Life is good." in output
-    assert "Discovery score" in output
-
-
-def test_cli_lucky_requires_query(monkeypatch, capsys):
-    run_cli_with_inputs(monkeypatch, ["load", "lucky", "exit"])
-
-    monkeypatch.setattr("src.main.load_index", sample_cli_index)
-    monkeypatch.setattr("src.main.load_records", sample_cli_records)
-
-    run_shell()
-
-    output = capsys.readouterr().out
-
-    assert "Please provide a query" in output
-
-
-def test_cli_discover_requires_query(monkeypatch, capsys):
-    run_cli_with_inputs(monkeypatch, ["load", "discover", "exit"])
-
-    monkeypatch.setattr("src.main.load_index", sample_cli_index)
-    monkeypatch.setattr("src.main.load_records", sample_cli_records)
-
-    run_shell()
-
-    output = capsys.readouterr().out
-
-    assert "Please provide a query" in output
-
-
-def test_cli_lucky_requires_loaded_records(monkeypatch, capsys):
-    run_cli_with_inputs(monkeypatch, ["lucky life", "exit"])
-
-    run_shell()
-
-    output = capsys.readouterr().out
-
-    assert "No quote records loaded. Run build or load first." in output
-
-
-def test_cli_discover_requires_loaded_records(monkeypatch, capsys):
-    run_cli_with_inputs(monkeypatch, ["discover life", "exit"])
-
-    run_shell()
-
-    output = capsys.readouterr().out
-
-    assert "No quote records loaded. Run build or load first." in output

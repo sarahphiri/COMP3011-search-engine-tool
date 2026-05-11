@@ -3,16 +3,12 @@ from typing import Any, Dict
 from src.crawler import crawl_site
 from src.indexer import build_inverted_index
 from src.search import (
-    discover_quotes,
     find_pages_ranked,
     get_word_entry,
     is_quoted_phrase,
     load_index,
-    load_records,
-    lucky_quote,
     phrase_search,
     save_index,
-    save_records,
     strip_query_quotes,
     suggest_terms,
 )
@@ -32,8 +28,6 @@ def print_help() -> None:
     print("  suggest <query>    Suggest close indexed terms for a query")
     print("  help               Show this help message")
     print("  exit               Exit the program\n")
-    print("  lucky <query>      Return the single best quote discovery result")
-    print("  discover <query>   Return top quote recommendations for a query")
 
 
 def print_suggestions(index: Dict[str, Any], query: str) -> None:
@@ -76,7 +70,6 @@ def run_shell() -> None:
     Run the command-line search tool.
     """
     index: Dict[str, Any] = {}
-    records = []
 
     print("COMP3011 Search Engine Tool")
     print_help()
@@ -104,20 +97,12 @@ def run_shell() -> None:
             records = crawl_site()
             index = build_inverted_index(records)
             save_index(index)
-            save_records(records)
-            print(
-                f"Index built and saved. Indexed {len(index)} unique words "
-                f"from {len(records)} quote records."
-            )
+            print(f"Index built and saved. Indexed {len(index)} unique words.")
 
         elif command == "load":
             try:
                 index = load_index()
-                records = load_records()
-                print(
-                    f"Index loaded. Loaded {len(index)} unique words "
-                    f"and {len(records)} quote records."
-                )
+                print(f"Index loaded. Loaded {len(index)} unique words.")
             except FileNotFoundError as error:
                 print(error)
 
@@ -223,46 +208,6 @@ def run_shell() -> None:
                 print(f"Suggestions for: '{query}'")
                 for missing_term, matches in suggestions.items():
                     print(f"- {missing_term}: {', '.join(matches)}")
-
-        elif command == "lucky":
-            if not arguments:
-                print("Please provide a query, e.g. lucky life")
-                continue
-
-            if not records:
-                print("No quote records loaded. Run build or load first.")
-                continue
-
-            query = " ".join(arguments)
-            result = lucky_quote(records, query)
-
-            if result is None:
-                print(f"No lucky quote found for: '{query}'")
-                print_suggestions(index, query)
-            else:
-                print(f"I'm Feeling Lucky result for: '{query}'")
-                print_discovery_result(result)
-
-        elif command == "discover":
-            if not arguments:
-                print("Please provide a query, e.g. discover friendship")
-                continue
-
-            if not records:
-                print("No quote records loaded. Run build or load first.")
-                continue
-
-            query = " ".join(arguments)
-            results = discover_quotes(records, query, limit=3)
-
-            if not results:
-                print(f"No quote discovery results found for: '{query}'")
-                print_suggestions(index, query)
-            else:
-                print(f"Quote discovery results for: '{query}'")
-                for rank, result in enumerate(results, start=1):
-                    print_discovery_result(result, rank=rank)
-                    print()
 
         else:
             print(f"Unknown command: {command}")

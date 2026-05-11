@@ -189,7 +189,7 @@ def test_fetch_page_returns_none_when_request_fails(monkeypatch):
     assert result is None
 
 
-def test_crawl_site_follows_pagination_without_real_requests(monkeypatch):
+def test_crawl_site_observes_six_second_politeness_window(monkeypatch):
     start_url = "https://quotes.toscrape.com/"
     page_two_url = "https://quotes.toscrape.com/page/2/"
 
@@ -198,23 +198,26 @@ def test_crawl_site_follows_pagination_without_real_requests(monkeypatch):
         page_two_url: FINAL_QUOTE_HTML,
     }
 
-    requested_urls = []
-    sleep_calls = []
+    events = []
 
     def fake_fetch_page(url):
-        requested_urls.append(url)
+        events.append(("fetch", url))
         return html_by_url[url]
 
     def fake_sleep(seconds):
-        sleep_calls.append(seconds)
+        events.append(("sleep", seconds))
 
     monkeypatch.setattr("src.crawler.fetch_page", fake_fetch_page)
     monkeypatch.setattr("src.crawler.time.sleep", fake_sleep)
 
     results = crawl_site(start_url=start_url, delay_seconds=6)
 
-    assert requested_urls == [start_url, page_two_url]
-    assert sleep_calls == [6]
+    assert events == [
+        ("fetch", start_url),
+        ("sleep", 6),
+        ("fetch", page_two_url),
+    ]
+
     assert len(results) == 3
     assert results[0]["author"] == "Albert Einstein"
     assert results[1]["author"] == "J.K. Rowling"
