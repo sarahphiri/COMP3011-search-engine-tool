@@ -13,7 +13,7 @@ from src.search import (
     suggest_terms,
 )
 
-
+#outputs all the commands included in the search engine
 def print_help() -> None:
     """
     Print available commands.
@@ -30,10 +30,8 @@ def print_help() -> None:
     print("  exit               Exit the program\n")
 
 
+#if the user inputs a spelling mistake or words with a close match it will suggest
 def print_suggestions(index: Dict[str, Any], query: str) -> None:
-    """
-    Print query suggestions for missing or misspelled terms.
-    """
     suggestions = suggest_terms(index, query)
 
     if suggestions:
@@ -41,10 +39,8 @@ def print_suggestions(index: Dict[str, Any], query: str) -> None:
         for missing_term, matches in suggestions.items():
             print(f"- {missing_term}: {', '.join(matches)}")
 
+#outputs the result of the search
 def print_discovery_result(result: Dict[str, Any], rank: int | None = None) -> None:
-    """
-    Print a quote discovery result clearly.
-    """
     record = result["record"]
     prefix = f"{rank}. " if rank is not None else ""
 
@@ -64,11 +60,8 @@ def print_discovery_result(result: Dict[str, Any], rank: int | None = None) -> N
         for reason in result["reasons"]:
             print(f"- {reason}")
 
-
+#runs the search tool (depending on the command)
 def run_shell() -> None:
-    """
-    Run the command-line search tool.
-    """
     index: Dict[str, Any] = {}
 
     print("COMP3011 Search Engine Tool")
