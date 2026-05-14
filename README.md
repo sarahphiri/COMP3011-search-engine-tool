@@ -111,9 +111,6 @@ COMP3011-search-engine-tool/
 | `src/search.py` | Saves/loads the index and handles search, ranking, phrase search, and suggestions |
 | `src/main.py` | Provides the command-line interface |
 | `tests/` | Contains unit tests and mocked integration-style tests |
-| `scripts/benchmark.py` | Runs repeatable performance benchmarks |
-| `docs/` | Contains complexity and benchmark documentation |
-| `.github/workflows/tests.yml` | Runs the automated test pipeline |
 
 ---
 
