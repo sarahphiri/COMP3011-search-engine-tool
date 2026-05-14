@@ -17,8 +17,6 @@ The project implements the required `build`, `load`, `print`, and `find` command
 - [How the Search Engine Works](#how-the-search-engine-works)
 - [Design Decisions](#design-decisions)
 - [Testing](#testing)
-- [Continuous Integration](#continuous-integration)
-- [Benchmarking and Complexity Analysis](#benchmarking-and-complexity-analysis)
 - [Version Control Workflow](#version-control-workflow)
 - [Generative AI Use](#generative-ai-use)
 - [Limitations](#limitations)
