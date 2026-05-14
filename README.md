@@ -554,54 +554,6 @@ CLI tests mock user input so that commands such as `build`, `load`, `print`, `fi
 
 ---
 
-## Continuous Integration
-
-The repository includes a GitHub Actions workflow:
-
-```text
-.github/workflows/tests.yml
-```
-
-The workflow runs automatically on pushes and pull requests.
-
-It:
-
-1. Checks out the repository
-2. Sets up Python
-3. Installs dependencies
-4. Runs the pytest suite
-5. Generates coverage output
-6. Enforces the configured coverage threshold
-
-This supports a more professional development workflow by ensuring that tests run automatically before changes are merged.
-
----
-
-## Benchmarking and Complexity Analysis
-
-The project includes benchmarking and complexity documentation.
-
-```text
-docs/COMPLEXITY_AND_BENCHMARKING.md
-docs/BENCHMARK_RESULTS.md
-scripts/benchmark.py
-```
-
-Run the benchmark script with:
-
-```bash
-python scripts/benchmark.py
-```
-
-The benchmark measures:
-
-- index construction time
-- TF-IDF ranked search time
-- phrase search time
-- query suggestion time
-
-Synthetic data is used for benchmarking so that results are repeatable and not affected by network speed, website response time, or the required crawler delay.
-
 ### Complexity Summary
 
 | Operation | Expected Complexity | Notes |
@@ -739,14 +691,6 @@ Run tests using:
 
 ```bash
 python -m pytest
-```
-
-Make sure `pytest.ini` contains:
-
-```ini
-[pytest]
-pythonpath = .
-testpaths = tests
 ```
 
 ### No index file found
