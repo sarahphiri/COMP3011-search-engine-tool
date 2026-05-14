@@ -1,325 +1,589 @@
 # COMP3011 Search Engine Tool
 
-A Python command-line search engine that crawls `quotes.toscrape.com`, builds an inverted index, saves and loads the index, and allows users to search for single-word and multi-word queries.
+A command-line search engine built for the COMP3011 coursework. The tool crawls [`quotes.toscrape.com`](https://quotes.toscrape.com/), extracts quote data, builds an inverted index, saves and loads the index from file, and allows users to search the indexed content through a terminal interface.
+
+The project implements the required `build`, `load`, `print`, and `find` commands, alongside additional search features such as TF-IDF ranking, phrase search, query suggestions, benchmarking, automated testing, and GitHub Actions.
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Command Reference](#command-reference)
+- [How the Search Engine Works](#how-the-search-engine-works)
+- [Design Decisions](#design-decisions)
+- [Testing](#testing)
+- [Continuous Integration](#continuous-integration)
+- [Benchmarking and Complexity Analysis](#benchmarking-and-complexity-analysis)
+- [Version Control Workflow](#version-control-workflow)
+- [Generative AI Use](#generative-ai-use)
+- [Limitations](#limitations)
+- [Troubleshooting](#troubleshooting)
+
+---
+
+## Overview
+
+This project is a small search engine that works from the command line. It performs four main tasks:
+
+1. Crawls pages from `quotes.toscrape.com`
+2. Extracts quote text, authors, tags, and page URLs
+3. Builds an inverted index containing word frequencies and positions
+4. Lets the user search the saved index through CLI commands
+
+The core data structure is an inverted index implemented using nested Python dictionaries.
+
+```text
+word → page URL → frequency and positions
+```
+
+This allows the tool to look up matching pages efficiently without scanning all quote text for every query.
+
+---
 
 ## Features
 
-- Crawls quote pages from `quotes.toscrape.com`
-- Respects a six-second politeness delay between website requests
-- Extracts quote text, authors, tags, and page URLs
-- Builds an inverted index with word frequency and position statistics
-- Saves and loads the index from the file system
-- Provides a command-line interface with `build`, `load`, `print`, and `find`
-- Supports case-insensitive search
-- Handles single-word and multi-word queries
-- Uses TF-IDF ranking to order search results by relevance
-- Includes tests for the crawler, indexer, storage, search logic, and edge cases
+### Required Features
+
+- Crawl `quotes.toscrape.com`
+- Follow pagination links
+- Apply a six-second delay between successive requests
+- Extract quote text, authors, tags, and URLs
+- Build an inverted index
+- Store word frequency and word positions
+- Save the index to the file system
+- Load the saved index from file
+- Provide a command-line interface
+- Support the required commands:
+  - `build`
+  - `load`
+  - `print <word>`
+  - `find <query>`
+
+### Additional Features
+
+- Multi-word search
+- TF-IDF ranked search results
+- Exact phrase search using stored word positions
+- Query suggestions for misspelled terms
+- Help command showing available commands
+- Edge-case handling for empty input and missing words
+- Complexity analysis documentation
+- Benchmark script and benchmark results
+- Professional pytest test suite
+- Mocked crawler and CLI tests
+- Automated GitHub Actions testing pipeline
+- 80 passing tests
+- 93% total test coverage
+
+---
 
 ## Project Structure
 
 ```text
 COMP3011-search-engine-tool/
+
+├── data/
+│   └── index.json
 ├── src/
-│   ├── __init__.py
 │   ├── crawler.py
 │   ├── indexer.py
-│   ├── search.py
-│   └── main.py
+│   ├── main.py
+│   └── search.py
 ├── tests/
 │   ├── test_crawler.py
 │   ├── test_indexer.py
 │   └── test_search.py
-├── data/
-│   └── index.json
-├── requirements.txt
-├── pytest.ini
-├── GENAI_REFLECTION.md
-└── README.md
+├── README.md
+└── requirements.txt
 ```
+
+### Main Files
+
+| File | Purpose |
+|---|---|
+| `src/crawler.py` | Fetches pages, parses HTML, extracts quote data, and follows pagination |
+| `src/indexer.py` | Tokenises text and builds the inverted index |
+| `src/search.py` | Saves/loads the index and handles search, ranking, phrase search, and suggestions |
+| `src/main.py` | Provides the command-line interface |
+| `tests/` | Contains unit tests and mocked integration-style tests |
+| `scripts/benchmark.py` | Runs repeatable performance benchmarks |
+| `docs/` | Contains complexity and benchmark documentation |
+| `.github/workflows/tests.yml` | Runs the automated test pipeline |
+
+---
 
 ## Installation
 
-Clone the repository:
+### 1. Clone the repository
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/sarahphiri/COMP3011-search-engine-tool.git
 cd COMP3011-search-engine-tool
 ```
 
-Install the required dependencies:
+### 2. Create and activate a virtual environment
+
+```bash
+python -m venv .venv
+```
+
+On macOS/Linux:
+
+```bash
+source .venv/bin/activate
+```
+
+On Windows:
+
+```bash
+.venv\Scripts\activate
+```
+
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
+---
+
 ## Usage
 
-Run the command-line tool:
+Run the command-line tool with:
 
 ```bash
 python -m src.main
 ```
 
-The program opens an interactive shell where the following commands can be used.
+You should then see the interactive search prompt.
+
+```text
+COMP3011 Search Engine Tool
+
+Available commands:
+  build
+  load
+  print <word>
+  find <query>
+  find "<phrase>"
+  phrase <query>
+  suggest <query>
+  help
+  exit
+```
+
+---
+
+## Command Reference
+
+### `help`
+
+Shows the available commands.
+
+```text
+help
+```
 
 ### `build`
 
-Crawls the target website, builds the inverted index, and saves it to `data/index.json`.
+Crawls the website, extracts quote records, builds the inverted index, and saves it to `data/index.json`.
 
 ```text
-> build
+build
 ```
+
+The crawler includes the required six-second delay between successive requests. Because of this delay, the build command may take over a minute to complete.
 
 ### `load`
 
-Loads a previously saved index from the file system.
+Loads the saved index from `data/index.json`.
 
 ```text
-> load
+load
 ```
 
 ### `print <word>`
 
 Prints the inverted index entry for a single word.
 
-Example:
-
 ```text
-> print life
+print life
 ```
 
-This shows the pages where the word appears, along with stored statistics such as frequency and positions.
+Example output structure:
+
+```text
+{
+  "https://quotes.toscrape.com/page/1/": {
+    "frequency": 1,
+    "positions": [12]
+  }
+}
+```
 
 ### `find <query>`
 
-Finds pages containing the query terms.
-
-Examples:
+Finds pages containing the query term or terms.
 
 ```text
-> find life
-> find good friends
+find life
 ```
 
-The `find` command supports both single-word and multi-word queries. Results are ranked using TF-IDF scoring so that more relevant pages appear first.
-
-### `help`
-
-Displays the available commands.
+Multi-word search is also supported:
 
 ```text
-> help
+find good friends
+```
+
+The tool returns pages containing all query terms and ranks them using TF-IDF.
+
+### `find "<phrase>"`
+
+Finds exact phrase matches using word positions.
+
+```text
+find "good friends"
+```
+
+### `phrase <query>`
+
+Alternative command for exact phrase search.
+
+```text
+phrase good friends
+```
+
+### `suggest <query>`
+
+Suggests close indexed terms for misspelled queries.
+
+```text
+suggest frend
+```
+
+Example:
+
+```text
+Suggestions for: 'frend'
+- frend: friend
 ```
 
 ### `exit`
 
-Closes the command-line tool.
+Exits the program.
 
 ```text
-> exit
+exit
 ```
 
-## Testing
+---
 
-Run the full test suite:
+## Example Demo Flow
 
-```bash
-python -m pytest
+The following commands demonstrate the main required and additional functionality:
+
+```text
+help
+build
+load
+print life
+find life
+find good friends
+phrase good friends
+suggest frend
+print nonsenseword
+find
+exit
 ```
 
-Run the tests with coverage:
+This demonstrates:
 
-```bash
-python -m pytest --cov=src tests/
-```
-
-The test suite covers:
-
-- crawler parsing
-- pagination detection
-- empty HTML handling
-- missing quote fields
-- text tokenisation
-- punctuation and capitalisation handling
-- inverted index construction
-- word frequency tracking
-- word position tracking
-- save and load behaviour
-- missing index files
-- invalid JSON files
-- single-word search
+- all required commands from the coursework brief
 - multi-word search
-- empty queries
-- missing search terms
-- TF-IDF ranked search results
+- TF-IDF ranking
+- advanced phrase search
+- query suggestions
+- edge-case handling for missing words and empty queries
 
-## Design Decisions
+---
 
-### Crawler
+## How the Search Engine Works
 
-The crawler is split into separate functions for fetching pages, parsing quote data, detecting the next page, and controlling the full crawl.
+### 1. Crawling
 
-This separation makes the crawler easier to test because each part can be checked independently. It also makes the code easier to explain during the video demonstration.
+The crawler starts at:
 
-The crawler includes the required six-second politeness delay between successive requests to the website.
+```text
+https://quotes.toscrape.com/
+```
 
-### Text Extraction
+It fetches the page HTML, extracts quote blocks, and follows the `next` pagination link until there are no more pages.
 
-The crawler extracts structured records from each page, including:
+The crawler extracts:
 
 - quote text
 - author
 - tags
 - page URL
 
-This means the indexer works with clean structured data rather than raw HTML.
+The crawler also includes a six-second delay before making another request.
 
-### Text Normalisation
+### 2. Tokenisation
 
-All indexed and searched text is lowercased and tokenised before processing.
+The tokeniser converts text into lowercase searchable terms.
 
-This ensures that searches are case-insensitive. For example:
-
-```text
-Good
-good
-GOOD
+```python
+re.findall(r"\b[a-zA-Z0-9']+\b", text.lower())
 ```
 
-are all treated as the same word.
+This makes search case-insensitive and removes most punctuation while preserving useful tokens such as words, numbers, and apostrophes.
 
-Punctuation is also removed during tokenisation so that words such as:
+### 3. Inverted Index Construction
 
-```text
-friends.
-friends!
-friends,
-```
-
-are treated as:
-
-```text
-friends
-```
-
-### Inverted Index
-
-The inverted index uses a nested dictionary structure:
+The inverted index is implemented as nested dictionaries.
 
 ```text
 word → page URL → frequency and positions
 ```
 
-Example structure:
+Example:
 
 ```json
 {
-  "good": {
+  "life": {
     "https://quotes.toscrape.com/page/1/": {
       "frequency": 2,
-      "positions": [0, 3]
+      "positions": [4, 18]
     }
   }
 }
 ```
 
-This structure supports fast lookup for the `print` command and makes multi-word search easier because the program can compare the sets of pages associated with each query term.
+For each token, the index stores:
 
-Frequency is stored so the tool can identify how often a word appears on a page. Positions are stored to provide a more detailed index and to support possible future features such as phrase search.
+| Field | Purpose |
+|---|---|
+| `frequency` | Counts how often the word appears on a page |
+| `positions` | Stores word positions for phrase search |
 
-### Storage
+### 4. Search
 
-The index is saved as a JSON file in the `data/` folder.
+For a single-word query, the tool looks up the word directly in the index.
 
-JSON was chosen because it is readable, portable, and easy to inspect. This makes it clear what data has been generated by the `build` command and allows the index to be loaded again without re-crawling the website.
+For a multi-word query, the tool finds pages containing all query terms by intersecting the matching page sets.
 
-### Search
+### 5. Ranking
 
-The search logic is separated from the command-line interface so it can be tested independently.
-
-Single-word queries return pages containing that word. Multi-word queries use the intersection of page sets, meaning returned pages must contain all query terms.
-
-For example:
+Search results are ranked using TF-IDF.
 
 ```text
-find good friends
+score = term frequency × inverse document frequency
 ```
 
-returns pages that contain both `good` and `friends`.
+This means a page scores higher when:
+
+- the query term appears more often on that page
+- the query term is less common across the collection
+
+### 6. Phrase Search
+
+Phrase search uses the stored word positions.
+
+For example, the phrase:
+
+```text
+good friends
+```
+
+matches only when:
+
+```text
+good position + 1 = friends position
+```
+
+This allows the tool to distinguish between pages that contain both words separately and pages where the phrase appears exactly.
+
+### 7. Query Suggestions
+
+Query suggestions use close matching against the indexed vocabulary. This allows the tool to suggest likely intended terms when the user enters a misspelled query.
+
+---
+
+## Design Decisions
+
+### Inverted Index
+
+I used an inverted index because it is the standard data structure for efficient text search. Instead of scanning every quote for every query, the system can directly look up the pages associated with a word.
+
+### Nested Dictionaries
+
+The inverted index is implemented using nested Python dictionaries because dictionaries provide fast average-case lookup.
+
+```text
+word → page URL → frequency and positions
+```
+
+This makes the structure simple, readable, and efficient for the dataset size.
+
+### Frequency and Positions
+
+The index stores both frequency and positions.
+
+Frequency is used for TF-IDF ranking. Positions are used for exact phrase search.
+
+This makes the index more useful than a simple word-to-page mapping.
+
+### Page Position Offsets
+
+The indexer uses `page_position_offsets` to keep word positions continuous across multiple quote records on the same page.
+
+A small gap is added between records on the same page. This prevents phrase search from accidentally matching the end of one quote with the beginning of another separate quote.
+
+### JSON Storage
+
+The index is saved as JSON.
+
+The tradeoff is that JSON is not as scalable as a database for very large indexes. However, for this coursework dataset, JSON is appropriate because it is:
+
+- simple
+- readable
+- easy to inspect
+- easy to load and save
+- suitable for the dataset size
 
 ### TF-IDF Ranking
 
-TF-IDF ranking was added as an advanced search feature.
+TF-IDF ranking was added to make the search results more meaningful. Instead of returning raw matches only, the tool scores pages based on term frequency and document frequency.
 
-The ranking considers:
+### Rarest-Term-First Query Processing
 
-- how often a query term appears on a page
-- how common or rare the term is across all indexed pages
+For multi-word queries, query terms are ordered by document frequency before intersecting page sets.
 
-This makes the search results more useful than simply returning matching pages in an unordered list. Pages where the query terms appear more strongly are ranked higher.
+This means rarer terms are processed first, reducing the candidate page set earlier and improving search efficiency in practice.
 
-## Error Handling
+### Phrase Search
 
-The tool includes handling for common user and file errors, including:
+Phrase search was added as an advanced query-processing feature. It uses stored word positions to check whether words appear consecutively and in the correct order.
 
-- empty commands
-- missing arguments after `print`
-- missing arguments after `find`
-- unknown commands
-- searching before an index has been loaded
-- loading a missing index file
-- invalid or empty search terms
+### Query Suggestions
 
-This helps the command-line tool behave more reliably during demonstration and use.
+Query suggestions improve usability by helping users recover from misspellings.
 
-## GenAI Use
+The tradeoff is that close matching compares against the indexed vocabulary, which is acceptable for this dataset but would need a more scalable method for a much larger search engine.
 
-Generative AI was used as a support tool during development. It helped with planning the project structure, understanding possible inverted index designs, debugging errors, and suggesting test cases.
+---
 
-However, AI-generated suggestions were reviewed, tested, and adapted rather than copied without checking. Some suggestions needed to be changed to match the coursework requirements, the required command-line interface, and the actual structure of `quotes.toscrape.com`.
+## Research-Informed Search Design
 
-For example, some initial search suggestions returned pages containing any query term, but the implementation was adapted so multi-word queries return pages containing all query terms. Additional tests were also added manually for edge cases such as punctuation, empty queries, missing fields, and invalid files.
+The implementation was informed by research into common search engine techniques, including:
 
-Using GenAI helped speed up parts of the development process, but it also highlighted the need to understand, test, and justify all submitted code.
+- inverted indexes
+- tokenisation and normalisation
+- posting lists
+- term frequency
+- inverse document frequency
+- TF-IDF ranking
+- phrase search using word positions
+- query suggestion techniques
 
-More detailed notes are included in `GENAI_REFLECTION.md`.
+These concepts helped shape the design of the tool and made the implementation closer to a real search-engine workflow than a simple string-matching program.
 
-## Limitations
+---
 
-- The crawler is designed specifically for `quotes.toscrape.com`.
-- The index only updates when the `build` command is run again.
-- The current search does not include stemming, synonym expansion, or spelling correction.
-- TF-IDF ranking is based only on the pages and terms stored in the local index.
+## Testing
 
-## Coursework Requirements Covered
+The project uses `pytest` for testing.
 
-This project covers the main coursework requirements:
+Run the full test suite with:
 
-- crawling the target website
-- creating an inverted index
-- storing word statistics such as frequency and positions
-- supporting case-insensitive search
-- saving and loading the index
-- implementing the required `build`, `load`, `print`, and `find` commands
-- supporting multi-word queries
-- handling edge cases and invalid input
-- using tests to check crawler, indexer, storage, and search behaviour
-- using GitHub for version control, issues, branches, pull requests, and milestones
-- reflecting on GenAI use during development
+```bash
+python -m pytest
+```
 
-## Performance, Complexity, and Benchmarking
+Run the test suite with coverage:
 
-This project includes additional performance evidence to support the implementation and demonstrate awareness of algorithmic efficiency.
+```bash
+python -m pytest --cov=src --cov-report=term-missing tests/
+```
 
-The complexity analysis is documented in:
+Current test status:
+
+```text
+80 tests passed
+93% total coverage
+```
+
+### Test Coverage by Area
+
+| Area | Tested |
+|---|---|
+| Crawler parsing | Yes |
+| Crawler pagination | Yes |
+| Network error handling | Yes |
+| Mocked crawler requests | Yes |
+| Required crawler delay behaviour | Yes |
+| Tokenisation | Yes |
+| Normalisation | Yes |
+| Inverted index construction | Yes |
+| Frequency counting | Yes |
+| Position tracking | Yes |
+| Save/load index | Yes |
+| Missing index file handling | Yes |
+| Single-word search | Yes |
+| Multi-word search | Yes |
+| TF-IDF ranking | Yes |
+| Phrase search | Yes |
+| Query suggestions | Yes |
+| CLI command handling | Yes |
+| Empty and invalid input | Yes |
+
+### Mocking Strategy
+
+The test suite uses mocking to avoid unreliable or slow tests.
+
+Crawler tests use mocked HTML rather than relying on the live website. This makes the tests repeatable and independent of network conditions.
+
+The crawler delay is also mocked so that the six-second politeness delay can be tested without slowing down the test suite.
+
+CLI tests mock user input so that commands such as `build`, `load`, `print`, `find`, `phrase`, and `suggest` can be tested automatically.
+
+---
+
+## Continuous Integration
+
+The repository includes a GitHub Actions workflow:
+
+```text
+.github/workflows/tests.yml
+```
+
+The workflow runs automatically on pushes and pull requests.
+
+It:
+
+1. Checks out the repository
+2. Sets up Python
+3. Installs dependencies
+4. Runs the pytest suite
+5. Generates coverage output
+6. Enforces the configured coverage threshold
+
+This supports a more professional development workflow by ensuring that tests run automatically before changes are merged.
+
+---
+
+## Benchmarking and Complexity Analysis
+
+The project includes benchmarking and complexity documentation.
 
 ```text
 docs/COMPLEXITY_AND_BENCHMARKING.md
-```
-
-The benchmark script is located at:
-
-```text
+docs/BENCHMARK_RESULTS.md
 scripts/benchmark.py
 ```
 
@@ -329,66 +593,247 @@ Run the benchmark script with:
 python scripts/benchmark.py
 ```
 
-The benchmark results are written to:
+The benchmark measures:
 
-```text
-docs/BENCHMARK_RESULTS.md
-```
+- index construction time
+- TF-IDF ranked search time
+- phrase search time
+- query suggestion time
 
-## Benchmarking Approach
+Synthetic data is used for benchmarking so that results are repeatable and not affected by network speed, website response time, or the required crawler delay.
 
-The benchmark script measures the performance of the main indexing and search operations:
+### Complexity Summary
 
-- index construction
-- TF-IDF ranked search
-- phrase search
-- query suggestions
-
-The benchmark uses synthetic records rather than live crawling. This makes the results repeatable and avoids benchmark times being affected by network speed, website response time, or the required six-second politeness delay between crawler requests.
-
-## Algorithmic Efficiency
-
-The project uses an inverted index rather than scanning every page for every query.
-
-The index structure is:
-
-```text
-word → page URL → frequency and positions
-```
-
-This allows the tool to directly retrieve the pages associated with a query term.
-
-For multi-word queries, the search implementation processes rarer terms first by ordering terms according to document frequency. This reduces the candidate page set earlier and makes query processing more efficient in practice.
-
-TF-IDF ranking and phrase search are then applied only to candidate pages rather than every indexed page.
-
-## Summary of Complexity
-
-| Operation | Expected Complexity | Explanation |
+| Operation | Expected Complexity | Notes |
 |---|---:|---|
+| Crawling | `O(P + total HTML parsed)` | Runtime is dominated by the required delay |
 | Index construction | `O(T)` | Each token is processed once |
-| `print <word>` lookup | `O(1)` average lookup | Uses direct dictionary access |
-| Multi-word search | `O(sum(df(t)))` | Intersects posting lists for query terms |
+| Word lookup | `O(1)` average lookup | Uses dictionary access |
+| Multi-word search | `O(sum(df(t)))` | Intersects posting lists |
 | TF-IDF ranking | `O(Q × K)` | Scores candidate pages only |
 | Phrase search | `O(sum(df(t)) + K × position checks)` | Uses stored word positions |
-| Query suggestions | `O(V)` | Compares missing terms against indexed vocabulary |
+| Query suggestions | `O(V)` | Compares against indexed vocabulary |
 
 Where:
 
-- `T` is the total number of tokens indexed
+- `P` is the number of pages
+- `T` is the number of tokens
 - `df(t)` is the number of pages containing term `t`
 - `Q` is the number of query terms
-- `K` is the number of candidate pages after filtering
-- `V` is the number of unique terms in the vocabulary
+- `K` is the number of candidate pages
+- `V` is the vocabulary size
 
-## Performance Design Decisions
+---
 
-The main performance-focused decisions were:
+## Version Control Workflow
 
-- using an inverted index instead of scanning raw page text for every query
-- storing word frequencies to support TF-IDF ranking
-- storing word positions to support exact phrase search
-- ordering multi-word query terms by document frequency before intersecting page sets
-- benchmarking indexing and search operations using repeatable synthetic data
+The project was developed using GitHub with a structured workflow.
 
-These choices help demonstrate that the tool is not only functional, but also designed with search efficiency and scalability in mind.
+### Commit Style
+
+Commits use clear prefixes to make the history easier to follow.
+
+Examples:
+
+| Prefix | Meaning |
+|---|---|
+| `feat:` | New feature |
+| `test:` | Test changes |
+| `docs:` | Documentation changes |
+| `fix:` | Bug fix |
+| `chore:` | Setup or maintenance work |
+| `ci:` | Continuous integration changes |
+| `perf:` | Performance or optimisation changes |
+
+### Branching and Pull Requests
+
+Features were developed on separate branches and merged through pull requests.
+
+This made each feature easier to review before it reached `main`.
+
+### Issues, Milestones, and Project Board
+
+The work was organised using GitHub issues, milestones, and a project board.
+
+Milestones grouped related tasks, such as:
+
+- crawler
+- indexing
+- storage and CLI commands
+- testing
+- advanced search features
+- documentation
+- final submission
+
+The project board tracked work through:
+
+```text
+Todo → In Progress → Testing → Done
+```
+
+This helped ensure features were not treated as complete until they had been tested and merged.
+
+---
+
+## Generative AI Use
+
+Generative AI, specifically ChatGPT, was used throughout this project as a development support tool. It was used to support the development process, but not as a replacement for understanding, testing, or decision-making.
+
+### How GenAI Was Used
+
+GenAI was used for:
+
+- planning the project structure and development workflow
+- breaking the coursework requirements into smaller implementation tasks
+- generating initial code for the crawler, indexer, search logic, and CLI
+- debugging errors, such as import issues, indentation problems, and failing tests
+- improving the implementation of the inverted index
+- understanding and applying search engine concepts such as:
+  - inverted indexes
+  - tokenisation
+  - posting lists
+  - TF-IDF ranking
+  - phrase search
+  - query suggestions
+  - document frequency optimisation
+- suggesting edge cases for testing
+- helping create pytest tests and mocked tests
+- supporting GitHub workflow decisions, including issues, milestones, branches, pull requests, and commit messages
+- helping design the GitHub Actions automated testing pipeline
+- improving documentation, including the README, complexity analysis, and benchmarking explanation
+- helping prepare and refine the video script
+
+### Critical Evaluation
+
+GenAI was especially useful because it made development more efficient and allowed me to ask specific questions when I was stuck. It also helped me learn more about search algorithms and testing strategies by explaining concepts in a practical way.
+
+However, I used GenAI through a back-and-forth process instead of accepting its output automatically. I reviewed suggestions, tested the code, corrected errors, and checked that the implementation matched the coursework brief. Although ChatGPT was effective for generating code, the final design decisions were reviewed by me.
+
+One limitation was that GenAI could sometimes drift away from the requirements. For example, it occasionally suggested repository structures or features that were more complex than needed for this coursework. This caused delays because I had to realign the work with the brief and make sure the final project stayed focused on the required search engine functionality.
+
+To use GenAI responsibly, I commented and reviewed the code myself afterwards so that I understood what each part was doing. I also validated the implementation using manual testing, automated tests, and coverage checks.
+
+Overall, GenAI was helpful as an assistant because it improved efficiency and supported learning. Its responsible use relied on critical review, testing, and personal motivation to check that the generated output was correct, ethical, and appropriate for the task.
+
+---
+
+## Limitations
+
+This project is designed for a small coursework dataset, so some implementation choices prioritise clarity and suitability over large-scale production performance.
+
+Current limitations include:
+
+- The crawler is designed specifically for `quotes.toscrape.com`
+- JSON storage is suitable for this dataset but not ideal for very large indexes
+- Query suggestions compare against the full vocabulary, which may not scale efficiently
+- The tool does not include a graphical interface
+- The search engine indexes quote text, authors, and tags, but does not currently support filtering by author or tag as separate fields
+
+---
+
+## Troubleshooting
+
+### `ModuleNotFoundError: No module named 'src'`
+
+Run tests using:
+
+```bash
+python -m pytest
+```
+
+Make sure `pytest.ini` contains:
+
+```ini
+[pytest]
+pythonpath = .
+testpaths = tests
+```
+
+### No index file found
+
+Run:
+
+```text
+build
+```
+
+inside the CLI before using:
+
+```text
+load
+```
+
+The `build` command creates:
+
+```text
+data/index.json
+```
+
+### Build command takes time
+
+This is expected. The crawler includes a six-second delay between successive requests to meet the politeness requirement.
+
+### Coverage command not working
+
+Install the coverage dependency:
+
+```bash
+pip install pytest-cov
+```
+
+Then run:
+
+```bash
+python -m pytest --cov=src --cov-report=term-missing tests/
+```
+
+---
+
+## Coursework Requirement Coverage
+
+| Requirement | Implemented |
+|---|---|
+| Crawl `quotes.toscrape.com` | Yes |
+| Use BeautifulSoup | Yes |
+| Include delay between requests | Yes |
+| Build inverted index | Yes |
+| Store frequency and positions | Yes |
+| Save index to file | Yes |
+| Load index from file | Yes |
+| `build` command | Yes |
+| `load` command | Yes |
+| `print <word>` command | Yes |
+| `find <query>` command | Yes |
+| Multi-word queries | Yes |
+| Edge-case handling | Yes |
+| Testing | Yes |
+| Mocking | Yes |
+| Automated testing pipeline | Yes |
+| Version control workflow | Yes |
+| GenAI reflection | Yes |
+| Advanced search features | Yes |
+| Complexity and benchmarking | Yes |
+
+---
+
+## Summary
+
+This project implements a complete command-line search engine with:
+
+- crawling
+- parsing
+- inverted indexing
+- file-based storage
+- search
+- TF-IDF ranking
+- phrase search
+- query suggestions
+- edge-case handling
+- professional testing
+- automated CI
+- benchmarking
+- documented design decisions
+- structured version control
+- GenAI critical evaluation
+
+The implementation is intentionally simple enough to be understandable, but includes core search-engine concepts such as inverted indexes, posting lists, frequency counts, word positions, TF-IDF ranking, phrase matching, and query optimisation.
